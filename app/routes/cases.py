@@ -39,7 +39,7 @@ def create_new_case(
         with open(filepath, "wb") as buffer:
             shutil.copyfileobj(photo.file, buffer)
 
-        photo_url = f"/uploads/{filename}"
+        photo_url = f"uploads/{filename}"
 
     case_data = schemas.MissingCaseCreate(
         full_name=full_name,

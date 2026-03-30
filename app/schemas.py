@@ -25,13 +25,13 @@ class MissingCaseResponse(BaseModel):
     city: str
     state: str
     missing_date: str
-    last_seen_clothes: Optional[str]
-    physical_traits: Optional[str]
-    case_description: Optional[str]
+    last_seen_clothes: Optional[str] = None
+    physical_traits: Optional[str] = None
+    case_description: Optional[str] = None
     police_report_number: str
     contact_name: str
     contact_phone: str
-    photo_url: Optional[str]
+    photo_url: Optional[str] = None
     status: str
     created_at: datetime
 
@@ -47,6 +47,7 @@ class AdminLogin(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
 
 class CaseTipCreate(BaseModel):
     case_id: int

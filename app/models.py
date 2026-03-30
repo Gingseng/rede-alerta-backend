@@ -19,8 +19,12 @@ class MissingCase(Base):
     contact_name = Column(String(150), nullable=False)
     contact_phone = Column(String(30), nullable=False)
     photo_url = Column(String(300), nullable=True)
-    status = Column(String(30), default="pendente")
+
+    # pending | published | found | rejected
+    status = Column(String(30), nullable=False, default="pending", index=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
+
 
 class CaseTip(Base):
     __tablename__ = "case_tips"

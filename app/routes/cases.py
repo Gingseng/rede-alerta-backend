@@ -30,6 +30,8 @@ def create_new_case(
     photo_url = None
 
     if photo:
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+
         extension = os.path.splitext(photo.filename)[1]
         filename = f"{uuid.uuid4().hex}{extension}"
         filepath = os.path.join(UPLOAD_DIR, filename)

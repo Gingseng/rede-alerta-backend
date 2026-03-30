@@ -16,7 +16,9 @@ def is_instagram_configured():
 
 def create_instagram_media_container(image_url: str, caption: str):
     if not is_instagram_configured():
-        raise ValueError("Instagram não configurado. Verifique INSTAGRAM_ACCESS_TOKEN e INSTAGRAM_ACCOUNT_ID.")
+        raise ValueError(
+            "Instagram não configurado. Verifique INSTAGRAM_ACCESS_TOKEN e INSTAGRAM_ACCOUNT_ID."
+        )
 
     url = f"{GRAPH_API_BASE_URL}/{INSTAGRAM_ACCOUNT_ID}/media"
 
@@ -27,13 +29,22 @@ def create_instagram_media_container(image_url: str, caption: str):
     }
 
     response = requests.post(url, data=payload, timeout=30)
-    response.raise_for_status()
+
+    if not response.ok:
+        raise ValueError(
+            f"Erro ao criar container no Instagram. "
+            f"Status: {response.status_code}. "
+            f"Resposta: {response.text}"
+        )
+
     return response.json()
 
 
 def publish_instagram_media(creation_id: str):
     if not is_instagram_configured():
-        raise ValueError("Instagram não configurado. Verifique INSTAGRAM_ACCESS_TOKEN e INSTAGRAM_ACCOUNT_ID.")
+        raise ValueError(
+            "Instagram não configurado. Verifique INSTAGRAM_ACCESS_TOKEN e INSTAGRAM_ACCOUNT_ID."
+        )
 
     url = f"{GRAPH_API_BASE_URL}/{INSTAGRAM_ACCOUNT_ID}/media_publish"
 
@@ -43,7 +54,14 @@ def publish_instagram_media(creation_id: str):
     }
 
     response = requests.post(url, data=payload, timeout=30)
-    response.raise_for_status()
+
+    if not response.ok:
+        raise ValueError(
+            f"Erro ao publicar mídia no Instagram. "
+            f"Status: {response.status_code}. "
+            f"Resposta: {response.text}"
+        )
+
     return response.json()
 
 
@@ -52,7 +70,9 @@ def publish_image_to_instagram(image_url: str, caption: str):
 
     creation_id = container.get("id")
     if not creation_id:
-        raise ValueError(f"Não foi possível obter o creation_id. Resposta: {container}")
+        raise ValueError(
+            f"Não foi possível obter o creation_id. Resposta: {container}"
+        )
 
     publish_result = publish_instagram_media(creation_id)
 

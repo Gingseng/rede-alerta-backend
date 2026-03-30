@@ -7,7 +7,10 @@ load_dotenv()
 INSTAGRAM_ACCESS_TOKEN = os.getenv("INSTAGRAM_ACCESS_TOKEN")
 INSTAGRAM_ACCOUNT_ID = os.getenv("INSTAGRAM_ACCOUNT_ID")
 
-GRAPH_API_BASE_URL = "https://graph.facebook.com/v23.0"
+GRAPH_API_BASE_URL = os.getenv(
+    "INSTAGRAM_GRAPH_API_BASE_URL",
+    "https://graph.instagram.com/v23.0"
+).rstrip("/")
 
 
 def is_instagram_configured():
@@ -33,6 +36,7 @@ def create_instagram_media_container(image_url: str, caption: str):
     if not response.ok:
         raise ValueError(
             f"Erro ao criar container no Instagram. "
+            f"URL: {url}. "
             f"Status: {response.status_code}. "
             f"Resposta: {response.text}"
         )
@@ -58,6 +62,7 @@ def publish_instagram_media(creation_id: str):
     if not response.ok:
         raise ValueError(
             f"Erro ao publicar mídia no Instagram. "
+            f"URL: {url}. "
             f"Status: {response.status_code}. "
             f"Resposta: {response.text}"
         )

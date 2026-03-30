@@ -131,6 +131,8 @@ def publish_instagram_media(creation_id: str):
 
 
 def publish_image_to_instagram(image_url: str, caption: str):
+    import time
+
     container = create_instagram_media_container(image_url, caption)
 
     creation_id = container.get("id")
@@ -139,9 +141,18 @@ def publish_image_to_instagram(image_url: str, caption: str):
             f"Não foi possível obter o creation_id. Resposta: {container}"
         )
 
-    publish_result = publish_instagram_media(creation_id)
+    last_error = None
 
-    return {
-        "container": container,
-        "publish_result": publish_result,
-    }
+    # tenta publicar algumas vezes, esperando a mídia ficar disponível
+    for wait_seconds in [3, 5, 8]:
+        try:
+            time.sleep(wait_seconds)
+            publish_result = publish_instagram_media(creation_id)
+            return {
+                "container": container,
+                "publish_result": publish_result,
+            }
+        except Exception as e:
+            last_error = e
+
+    raise ValueError(f"Falha ao publicar no Instagram após tentativas: {last_error}")

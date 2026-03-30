@@ -38,7 +38,8 @@ def build_public_image_url(photo_url: Optional[str]) -> Optional[str]:
     if not BACKEND_PUBLIC_URL:
         return None
 
-    return f"{BACKEND_PUBLIC_URL}{photo_url}"
+    normalized_path = photo_url if photo_url.startswith("/") else f"/{photo_url}"
+    return f"{BACKEND_PUBLIC_URL}{normalized_path}"
 
 
 def publish_case_to_instagram(case):

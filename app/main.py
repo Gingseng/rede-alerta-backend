@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from .database import Base, engine
 from .routes import cases, admin, auth, tips
 import os
+from app.routes import news
 
 
 Base.metadata.create_all(bind=engine)
@@ -27,7 +28,7 @@ app.include_router(auth.router)
 app.include_router(cases.router)
 app.include_router(admin.router)
 app.include_router(tips.router)
-
+app.include_router(news.router)
 @app.get("/")
 def root():
     return {"message": "API Rede Alerta funcionando"}

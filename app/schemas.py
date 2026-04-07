@@ -71,3 +71,37 @@ class CaseTipResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+
+class NewsPostBase(BaseModel):
+    title: str
+    summary: Optional[str] = None
+    content: str
+    cover_image_url: Optional[str] = None
+    category: Optional[str] = None
+    status: str = "rascunho"
+
+
+class NewsPostCreate(NewsPostBase):
+    pass
+
+
+class NewsPostUpdate(BaseModel):
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    content: Optional[str] = None
+    cover_image_url: Optional[str] = None
+    category: Optional[str] = None
+    status: Optional[str] = None
+
+
+class NewsPostResponse(NewsPostBase):
+    id: int
+    slug: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    published_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

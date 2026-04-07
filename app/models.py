@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime
 from datetime import datetime
 from .database import Base
+from sqlalchemy import Column, Integer, String, Text, DateTime
+from sqlalchemy.sql import func
 
 
 class MissingCase(Base):
@@ -41,3 +43,19 @@ class CaseTip(Base):
     status = Column(String(30), default="novo")
 
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    
+class NewsPost(Base):
+    __tablename__ = "news_posts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    slug = Column(String, unique=True, index=True, nullable=False)
+    summary = Column(String, nullable=True)
+    content = Column(Text, nullable=False)
+    cover_image_url = Column(String, nullable=True)
+    category = Column(String, nullable=True)
+    status = Column(String, default="rascunho", nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    published_at = Column(DateTime(timezone=True), nullable=True)

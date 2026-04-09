@@ -1,14 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
+import cloudinary.uploader
+
 from ..database import get_db
 from .. import crud, schemas
-import os
-import shutil
-import uuid
+from ..cloudinary_config import *  # garante a configuração do Cloudinary
 
 router = APIRouter(prefix="/cases", tags=["cases"])
-
-UPLOAD_DIR = "app/uploads"
 
 
 @router.post("/", response_model=schemas.MissingCaseResponse)
@@ -30,16 +28,18 @@ def create_new_case(
     photo_url = None
 
     if photo:
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-        extension = os.path.splitext(photo.filename)[1]
-        filename = f"{uuid.uuid4().hex}{extension}"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(photo.file, buffer)
-
-        photo_url = f"uploads/{filename}"
+        try:
+            result = cloudinary.uploader.upload(
+                photo.file,
+                folder="rede-alerta/cases",
+                resource_type="image"
+            )
+            photo_url = result.get("secure_url")
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Erro ao enviar imagem para o Cloudinary: {str(e)}"
+            )
 
     case_data = schemas.MissingCaseCreate(
         full_name=full_name,

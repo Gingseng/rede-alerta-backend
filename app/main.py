@@ -15,7 +15,11 @@ app = FastAPI(title="Rede Alerta API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://www.redealerta.ong.br",
+        "https://redealerta.ong.br",
+        "http://localhost:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

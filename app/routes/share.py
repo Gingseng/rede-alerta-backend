@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import NewsPost
+import html
 
 router = APIRouter(prefix="/share", tags=["share"])
 
@@ -32,14 +33,17 @@ def share_news(slug: str, db: Session = Depends(get_db)):
     if not post:
         raise HTTPException(status_code=404, detail="Notícia não encontrada")
 
-    title = post.title or "Rede Alerta"
-    description = post.summary or (
-        post.content[:160] if post.content else "Publicação do Rede Alerta"
+    title = html.escape(post.title or "Rede Alerta")
+    description = html.escape(
+        post.summary
+        or (post.content[:160] if post.content else "Publicação do Rede Alerta")
     )
     image = resolve_image_url(post.cover_image_url)
     public_url = f"{FRONTEND_URL}/informacoes/{post.slug}"
+    # Aqui é importante: a URL canônica e a URL OG ficam iguais à URL pública final
+    # e a rota /share só serve o HTML de prévia + redireciona depois.
 
-    html = f"""<!DOCTYPE html>
+    html_content = f"""<!DOCTYPE html>
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
@@ -56,21 +60,28 @@ def share_news(slug: str, db: Session = Depends(get_db)):
     <meta property="og:image" content="{image}" />
     <meta property="og:image:secure_url" content="{image}" />
     <meta property="og:image:alt" content="{title}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="{title}" />
     <meta name="twitter:description" content="{description}" />
     <meta name="twitter:image" content="{image}" />
 
-    <meta http-equiv="refresh" content="0; url={public_url}" />
+    <meta http-equiv="refresh" content="2; url={public_url}" />
     <script>
-      window.location.replace("{public_url}");
+      setTimeout(function() {{
+        window.location.replace("{public_url}");
+      }}, 2000);
     </script>
   </head>
   <body>
+    <h1>{title}</h1>
+    <p>{description}</p>
+    <img src="{image}" alt="{title}" style="max-width:100%;height:auto;" />
     <p>Redirecionando...</p>
     <p><a href="{public_url}">Clique aqui se não for redirecionado.</a></p>
   </body>
 </html>"""
 
-    return HTMLResponse(content=html)
+    return HTMLResponse(content=html_content)

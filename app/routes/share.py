@@ -2,13 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import NewsPost
+from app.models import NewsPost, MissingCase
 import html
 
 router = APIRouter(prefix="/share", tags=["share"])
 
 FRONTEND_URL = "https://www.redealerta.ong.br"
-DEFAULT_IMAGE = "https://www.redealerta.ong.br/og-default.jpg"
+API_BASE_URL = "https://rede-alerta-backendof.onrender.com"
+DEFAULT_IMAGE = f"{FRONTEND_URL}/og-default.jpg"
 
 
 def resolve_image_url(image_url: str | None) -> str:
@@ -19,7 +20,58 @@ def resolve_image_url(image_url: str | None) -> str:
         return image_url
 
     normalized = image_url if image_url.startswith("/") else f"/{image_url}"
-    return f"{FRONTEND_URL}{normalized}"
+    return f"{API_BASE_URL}{normalized}"
+
+
+def build_share_html(
+    *,
+    title: str,
+    description: str,
+    image: str,
+    public_url: str,
+    redirect_url: str,
+    og_type: str = "article",
+) -> str:
+    escaped_title = html.escape(title or "Rede Alerta")
+    escaped_description = html.escape(description or "Rede Alerta")
+    escaped_image = html.escape(image or DEFAULT_IMAGE)
+    escaped_public_url = html.escape(public_url)
+    escaped_redirect_url = html.escape(redirect_url)
+    escaped_type = html.escape(og_type)
+
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>{escaped_title}</title>
+  <meta name="description" content="{escaped_description}" />
+  <link rel="canonical" href="{escaped_public_url}" />
+
+  <meta property="og:site_name" content="Rede Alerta" />
+  <meta property="og:locale" content="pt_BR" />
+  <meta property="og:type" content="{escaped_type}" />
+  <meta property="og:title" content="{escaped_title}" />
+  <meta property="og:description" content="{escaped_description}" />
+  <meta property="og:url" content="{escaped_public_url}" />
+  <meta property="og:image" content="{escaped_image}" />
+  <meta property="og:image:secure_url" content="{escaped_image}" />
+  <meta property="og:image:alt" content="{escaped_title}" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="{escaped_title}" />
+  <meta name="twitter:description" content="{escaped_description}" />
+  <meta name="twitter:image" content="{escaped_image}" />
+
+  <meta http-equiv="refresh" content="0;url={escaped_redirect_url}" />
+</head>
+<body>
+  <p>Redirecionando...</p>
+  <p><a href="{escaped_redirect_url}">Clique aqui se não for redirecionado.</a></p>
+</body>
+</html>
+"""
 
 
 @router.get("/news/{slug}", response_class=HTMLResponse)
@@ -33,55 +85,65 @@ def share_news(slug: str, db: Session = Depends(get_db)):
     if not post:
         raise HTTPException(status_code=404, detail="Notícia não encontrada")
 
-    title = html.escape(post.title or "Rede Alerta")
-    description = html.escape(
+    title = post.title or "Rede Alerta"
+    description = (
         post.summary
         or (post.content[:160] if post.content else "Publicação do Rede Alerta")
     )
     image = resolve_image_url(post.cover_image_url)
+
     public_url = f"{FRONTEND_URL}/informacoes/{post.slug}"
-    # Aqui é importante: a URL canônica e a URL OG ficam iguais à URL pública final
-    # e a rota /share só serve o HTML de prévia + redireciona depois.
+    redirect_url = public_url
 
-    html_content = f"""<!DOCTYPE html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8" />
-    <title>{title}</title>
-    <meta name="description" content="{description}" />
-    <meta name="robots" content="index,follow" />
-    <link rel="canonical" href="{public_url}" />
+    html_content = build_share_html(
+        title=title,
+        description=description,
+        image=image,
+        public_url=public_url,
+        redirect_url=redirect_url,
+        og_type="article",
+    )
 
-    <meta property="og:type" content="article" />
-    <meta property="og:site_name" content="Rede Alerta" />
-    <meta property="og:title" content="{title}" />
-    <meta property="og:description" content="{description}" />
-    <meta property="og:url" content="{public_url}" />
-    <meta property="og:image" content="{image}" />
-    <meta property="og:image:secure_url" content="{image}" />
-    <meta property="og:image:alt" content="{title}" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
+    return HTMLResponse(content=html_content, status_code=200)
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="{title}" />
-    <meta name="twitter:description" content="{description}" />
-    <meta name="twitter:image" content="{image}" />
 
-    <meta http-equiv="refresh" content="2; url={public_url}" />
-    <script>
-      setTimeout(function() {{
-        window.location.replace("{public_url}");
-      }}, 2000);
-    </script>
-  </head>
-  <body>
-    <h1>{title}</h1>
-    <p>{description}</p>
-    <img src="{image}" alt="{title}" style="max-width:100%;height:auto;" />
-    <p>Redirecionando...</p>
-    <p><a href="{public_url}">Clique aqui se não for redirecionado.</a></p>
-  </body>
-</html>"""
+@router.get("/case/{case_id}", response_class=HTMLResponse)
+def share_case(case_id: int, db: Session = Depends(get_db)):
+    case = (
+        db.query(MissingCase)
+        .filter(MissingCase.id == case_id, MissingCase.status == "publicado")
+        .first()
+    )
 
-    return HTMLResponse(content=html_content)
+    if not case:
+        raise HTTPException(status_code=404, detail="Caso não encontrado")
+
+    title = f"{case.full_name} | Rede Alerta"
+
+    description_parts = [
+        f"{case.age} anos" if case.age is not None else None,
+        f"{case.city}/{case.state}" if case.city and case.state else None,
+        f"Desaparecido(a) em {case.missing_date}" if case.missing_date else None,
+    ]
+    base_description = " • ".join([part for part in description_parts if part])
+
+    if case.case_description:
+        description = f"{base_description}. {case.case_description[:120]}".strip()
+    else:
+        description = base_description or "Ajude a compartilhar este caso no Rede Alerta."
+
+    image = resolve_image_url(case.photo_url)
+
+    public_url = f"{FRONTEND_URL}/caso/{case.id}"
+    redirect_url = public_url
+
+    html_content = build_share_html(
+        title=title,
+        description=description,
+        image=image,
+        public_url=public_url,
+        redirect_url=redirect_url,
+        og_type="website",
+    )
+
+    return HTMLResponse(content=html_content, status_code=200)

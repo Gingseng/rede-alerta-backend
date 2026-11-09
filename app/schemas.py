@@ -18,7 +18,7 @@ class MissingCaseCreate(BaseModel):
     photo_url: Optional[str] = None
 
 
-class MissingCaseResponse(BaseModel):
+class PublicMissingCaseResponse(BaseModel):
     id: int
     full_name: str
     age: int
@@ -28,15 +28,23 @@ class MissingCaseResponse(BaseModel):
     last_seen_clothes: Optional[str] = None
     physical_traits: Optional[str] = None
     case_description: Optional[str] = None
-    police_report_number: str
-    contact_name: str
-    contact_phone: str
     photo_url: Optional[str] = None
     status: str
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class AdminMissingCaseResponse(PublicMissingCaseResponse):
+    police_report_number: str
+    contact_name: str
+    contact_phone: str
+
+
+class CaseSubmissionResponse(PublicMissingCaseResponse):
+    triage_status: str
+    review_reasons: list[str] = []
 
 
 class AdminLogin(BaseModel):

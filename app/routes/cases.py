@@ -5,11 +5,14 @@ import cloudinary.uploader
 from ..database import get_db
 from .. import crud, schemas
 from ..cloudinary_config import *  # garante a configuração do Cloudinary
+from ..case_social import publish_case_to_facebook, publish_case_to_instagram
+from ..social import mark_configuration_pending, platform_configuration, publish_social_once
+from ..privacy import public_case_payload
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
 
-@router.post("/", response_model=schemas.MissingCaseResponse)
+@router.post("/", response_model=schemas.CaseSubmissionResponse)
 def create_new_case(
     full_name: str = Form(...),
     age: int = Form(...),
@@ -56,17 +59,35 @@ def create_new_case(
         photo_url=photo_url,
     )
 
-    return crud.create_case(db, case_data)
+    db_case, triage = crud.create_case(db, case_data)
+
+    if triage.eligible:
+        instagram = platform_configuration()["instagram"]
+        facebook = platform_configuration()["facebook"]
+        for platform, configuration, callback in (
+            ("instagram", instagram, publish_case_to_instagram),
+            ("facebook", facebook, publish_case_to_facebook),
+        ):
+            if configuration["ready"]:
+                publish_social_once(db, db_case, platform, callback)
+            else:
+                mark_configuration_pending(db, db_case.id, platform, configuration["message"])
+
+    return {
+        **public_case_payload(db_case),
+        "triage_status": "published_automatically" if triage.eligible else "pending_review",
+        "review_reasons": triage.reasons,
+    }
 
 
-@router.get("/public", response_model=list[schemas.MissingCaseResponse])
+@router.get("/public", response_model=list[schemas.PublicMissingCaseResponse])
 def list_public_cases(db: Session = Depends(get_db)):
-    return crud.get_public_cases(db)
+    return [public_case_payload(case) for case in crud.get_public_cases(db)]
 
 
-@router.get("/{case_id}", response_model=schemas.MissingCaseResponse)
+@router.get("/{case_id}", response_model=schemas.PublicMissingCaseResponse)
 def get_case(case_id: int, db: Session = Depends(get_db)):
     db_case = crud.get_case_by_id(db, case_id)
-    if not db_case:
+    if not db_case or db_case.status != "published":
         raise HTTPException(status_code=404, detail="Caso não encontrado")
-    return db_case
+    return public_case_payload(db_case)

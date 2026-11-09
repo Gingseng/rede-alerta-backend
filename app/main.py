@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .database import Base, engine
+from .database import engine
+from .migration import ensure_schema
 from .routes import cases, admin, auth, tips
 import os
 from app.routes import news
@@ -9,7 +10,7 @@ from app.routes import share
 
 
 
-Base.metadata.create_all(bind=engine)
+ensure_schema(engine)
 
 app = FastAPI(title="Rede Alerta API")
 
@@ -29,6 +30,7 @@ UPLOAD_DIR = "app/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 app.include_router(auth.router)
 app.include_router(cases.router)

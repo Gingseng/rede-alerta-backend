@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime
+from sqlalchemy import Column, Integer, String, Text, DateTime, UniqueConstraint
 from datetime import datetime
 from .database import Base
 from sqlalchemy import Column, Integer, String, Text, DateTime
@@ -43,6 +43,23 @@ class CaseTip(Base):
     status = Column(String(30), default="novo")
 
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class SocialPublication(Base):
+    __tablename__ = "social_publications"
+    __table_args__ = (UniqueConstraint("case_id", "platform", name="uq_social_case_platform"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    case_id = Column(Integer, nullable=False, index=True)
+    platform = Column(String(30), nullable=False)
+    # pending | configuration_pending | publishing | published | unknown | failed
+    status = Column(String(30), nullable=False, default="pending", index=True)
+    attempt_count = Column(Integer, nullable=False, default=0)
+    remote_post_id = Column(String(200), nullable=True)
+    last_error = Column(Text, nullable=True)
+    published_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     
 class NewsPost(Base):

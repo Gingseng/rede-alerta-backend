@@ -3,13 +3,15 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import NewsPost, MissingCase
+from app.privacy import public_case_payload
 import html
+import os
 
 router = APIRouter(prefix="/share", tags=["share"])
 
-FRONTEND_URL = "https://www.redealerta.ong.br"
-API_BASE_URL = "https://rede-alerta-backendof.onrender.com"
-DEFAULT_IMAGE = f"{FRONTEND_URL}/og-default.jpg"
+FRONTEND_URL = os.getenv("FRONTEND_PUBLIC_URL", "https://www.redealerta.ong.br").rstrip("/")
+API_BASE_URL = os.getenv("BACKEND_PUBLIC_URL", "https://rede-alerta-backendof.onrender.com").rstrip("/")
+DEFAULT_IMAGE = os.getenv("DEFAULT_OG_IMAGE_URL", f"{API_BASE_URL}/static/og-default.svg")
 
 
 def resolve_image_url(image_url: str | None) -> str:
@@ -111,28 +113,29 @@ def share_news(slug: str, db: Session = Depends(get_db)):
 def share_case(case_id: int, db: Session = Depends(get_db)):
     case = (
         db.query(MissingCase)
-        .filter(MissingCase.id == case_id, MissingCase.status == "publicado")
+        .filter(MissingCase.id == case_id, MissingCase.status == "published")
         .first()
     )
 
     if not case:
         raise HTTPException(status_code=404, detail="Caso não encontrado")
 
-    title = f"{case.full_name} | Rede Alerta"
+    public_case = public_case_payload(case)
+    title = f"{public_case['full_name']} | Rede Alerta"
 
     description_parts = [
-        f"{case.age} anos" if case.age is not None else None,
-        f"{case.city}/{case.state}" if case.city and case.state else None,
-        f"Desaparecido(a) em {case.missing_date}" if case.missing_date else None,
+        f"{public_case['age']} anos" if public_case['age'] is not None else None,
+        f"{public_case['city']}/{public_case['state']}" if public_case['city'] and public_case['state'] else None,
+        f"Desaparecido(a) em {public_case['missing_date']}" if public_case['missing_date'] else None,
     ]
     base_description = " • ".join([part for part in description_parts if part])
 
-    if case.case_description:
-        description = f"{base_description}. {case.case_description[:120]}".strip()
+    if public_case["case_description"]:
+        description = f"{base_description}. {public_case['case_description'][:120]}".strip()
     else:
         description = base_description or "Ajude a compartilhar este caso no Rede Alerta."
 
-    image = resolve_image_url(case.photo_url)
+    image = resolve_image_url(public_case["photo_url"])
 
     public_url = f"{FRONTEND_URL}/caso/{case.id}"
     redirect_url = public_url

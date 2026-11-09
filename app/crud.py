@@ -4,19 +4,24 @@ from datetime import datetime
 import re
 import unicodedata
 from app import models, schemas
+from .moderation import triage_case
 
 VALID_CASE_STATUSES = {"pending", "published", "found", "rejected"}
 
 
 def create_case(db: Session, case: schemas.MissingCaseCreate):
+    existing_cases = db.query(models.MissingCase).all()
     db_case = models.MissingCase(
         **case.model_dump(),
-        status="pending"
+        status="pending",
     )
+    triage = triage_case(db_case, existing_cases)
+    if triage.eligible:
+        db_case.status = "published"
     db.add(db_case)
     db.commit()
     db.refresh(db_case)
-    return db_case
+    return db_case, triage
 
 
 def get_public_cases(db: Session):
